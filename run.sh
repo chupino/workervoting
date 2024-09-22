@@ -10,4 +10,4 @@ else
     exit 1
 fi
 
-docker run -dp 8000:80 --name=flask-app worker-app
+docker run -dp 8000:80 --name=worker-app worker
