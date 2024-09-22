@@ -1,4 +1,4 @@
-git clone https://github.com/chupino/flaskvoting.git worker
+git clone https://github.com/chupino/workervoting.git worker
 cd worker
 
 docker build -t worker .
