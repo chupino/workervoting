@@ -15,7 +15,7 @@ namespace Worker
             try
             {
                 // Conexión a PostgreSQL
-                var pgsql = OpenDbConnection("Server=3.95.168.143;Username=postgres;Password=postgres;");
+                var pgsql = OpenDbConnection("Server=3.93.237.34;Username=postgres;Password=postgres;");
                 
                 // Crear comando para mantener la conexión viva
                 var keepAliveCommand = pgsql.CreateCommand();
@@ -57,7 +57,7 @@ namespace Worker
                                 if (!pgsql.State.Equals(System.Data.ConnectionState.Open))
                                 {
                                     Console.WriteLine("Reconnecting DB");
-                                    pgsql = OpenDbConnection("Server=3.95.168.143;Username=postgres;Password=postgres;");
+                                    pgsql = OpenDbConnection("Server=3.93.237.34;Username=postgres;Password=postgres;");
                                 }
                                 else
                                 { 
