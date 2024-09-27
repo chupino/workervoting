@@ -38,42 +38,40 @@ namespace Worker
                     consumer.Subscribe("testtopic");
 
                     // Bucle para consumir mensajes de Kafka
-                    while (true)
-                    {
-                        try
-                        {
-                            // Leer el siguiente mensaje desde Kafka
-                            var consumeResult = consumer.Consume(CancellationToken.None);
-                            if (consumeResult != null)
-                            {
-                                // Obtener los datos del mensaje JSON
-                                string json = consumeResult.Message.Value;
-                                var vote = JsonConvert.DeserializeAnonymousType(json, definition);
-                                
-                                // Log de procesamiento del voto
-                                Console.WriteLine($"Processing vote for '{vote.vote}' by '{vote.voter_id}'");
+while (true)
+{
+    try
+    {
+        var consumeResult = consumer.Consume(CancellationToken.None);
+        if (consumeResult != null)
+        {
+            string json = consumeResult.Message.Value;
+            var vote = JsonConvert.DeserializeAnonymousType(json, definition);
+            
+            Console.WriteLine($"Processing vote for '{vote.vote}' by '{vote.voter_id}'");
 
-                                // Reintentar conectar a la base de datos si la conexión está cerrada
-                                if (!pgsql.State.Equals(System.Data.ConnectionState.Open))
-                                {
-                                    Console.WriteLine("Reconnecting DB");
-                                    pgsql = OpenDbConnection("Server=3.93.237.34;Username=postgres;Password=postgres;");
-                                }
-                                else
-                                { 
-                                    // Actualizar el voto en la base de datos
-                                    UpdateVote(pgsql, vote.voter_id, vote.vote);
-                                }
-                            }
+            // Verifica la conexión antes de actualizar
+            if (pgsql.State != System.Data.ConnectionState.Open)
+            {
+                Console.WriteLine("Reconnecting DB in consume loop");
+                pgsql = OpenDbConnection("Server=3.93.237.34;Username=postgres;Password=postgres;");
+            }
 
-                            // Mantener la conexión a PostgreSQL viva
-                            keepAliveCommand.ExecuteNonQuery();
-                        }
-                        catch (ConsumeException e)
-                        {
-                            Console.WriteLine($"Error occurred: {e.Error.Reason}");
-                        }
-                    }
+            UpdateVote(pgsql, vote.voter_id, vote.vote);
+        }
+
+        keepAliveCommand.ExecuteNonQuery();
+    }
+    catch (ConsumeException e)
+    {
+        Console.WriteLine($"Error occurred: {e.Error.Reason}");
+    }
+    catch (InvalidOperationException ex)
+    {
+        Console.WriteLine($"Invalid operation: {ex.Message}");
+        // Podrías intentar reconectar aquí si es necesario
+    }
+}
                 }
             }
             catch (Exception ex)
@@ -121,28 +119,32 @@ namespace Worker
         }
 
         // Método para actualizar los votos en la base de datos
-        private static void UpdateVote(NpgsqlConnection connection, string voterId, string vote)
+private static void UpdateVote(NpgsqlConnection connection, string voterId, string vote)
+{
+    if (connection.State != System.Data.ConnectionState.Open)
+    {
+        Console.WriteLine("Reconnecting DB in UpdateVote");
+        connection = OpenDbConnection("Server=3.93.237.34;Username=postgres;Password=postgres;");
+    }
+
+    using (var command = connection.CreateCommand())
+    {
+        try
         {
-            var command = connection.CreateCommand();
-            try
-            {
-                // Intentar insertar el voto
-                command.CommandText = "INSERT INTO votes (id, vote) VALUES (@id, @vote)";
-                command.Parameters.AddWithValue("@id", voterId);
-                command.Parameters.AddWithValue("@vote", vote);
-                command.ExecuteNonQuery();
-            }
-            catch (DbException)
-            {
-                // Si ya existe, actualizar el voto
-                command.CommandText = "UPDATE votes SET vote = @vote WHERE id = @id";
-                command.ExecuteNonQuery();
-            }
-            finally
-            {
-                command.Dispose();
-            }
+            // Intentar insertar el voto
+            command.CommandText = "INSERT INTO votes (id, vote) VALUES (@id, @vote)";
+            command.Parameters.AddWithValue("@id", voterId);
+            command.Parameters.AddWithValue("@vote", vote);
+            command.ExecuteNonQuery();
         }
+        catch (DbException)
+        {
+            // Si ya existe, actualizar el voto
+            command.CommandText = "UPDATE votes SET vote = @vote WHERE id = @id";
+            command.ExecuteNonQuery();
+        }
+    }
+}
     }
 }
 
