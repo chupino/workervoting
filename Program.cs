@@ -28,7 +28,7 @@ namespace Worker
                 var config = new ConsumerConfig
                 {
                     GroupId = "vote-group",
-                    BootstrapServers = "54.92.214.124:9092",
+                    BootstrapServers = "18.207.186.163:9093",
                     AutoOffsetReset = AutoOffsetReset.Earliest  // Para leer desde el principio si no hay offset almacenado
                 };
 
